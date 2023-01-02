@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "rpio": "^2.4.2",
     "ws": "^8.11.0"
   }
 }
