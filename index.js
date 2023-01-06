@@ -1,5 +1,62 @@
 const WebSocketServer = require('ws');
 const rpio = require('rpio');
+const express = require('express');
+const { readFileSync } = require('fs');
+const axios = require('axios');
+const app = express();
+
+const template = readFileSync('./index.html').toString();
+
+app.get('/', async (req, res) => {
+  const today = new Date();
+  const month = today.getMonth();
+  const year = today.getFullYear();
+
+  const monthBegin = new Date(year, month);
+  const monthEnd = new Date(year, month + 1, 0);
+  const firstWDay = monthBegin.getDay();
+  const lastWDay = monthEnd.getDay();
+
+  const calBegin = new Date(year, month, 1 - firstWDay);
+  const calEnd = new Date(year, month + 1, 6 - lastWDay);
+
+  let currDate = new Date(calBegin);
+
+  const startDate = calBegin.toISOString().substr(0, 10);
+  const endDate = calEnd.toISOString().substr(0, 10);
+
+  const tzOffsetStart = `0${calBegin.getTimezoneOffset() / 60}:00`;
+  const tzOffsetEnd = `0${calEnd.getTimezoneOffset() / 60}:00`;
+
+  const url = `https://www.googleapis.com/calendar/v3/calendars/7sng0uhmbhps29hbpfturq8ncsvmhlco%40import.calendar.google.com/events?key=${process.env.GAPI_KEY}&timeMin=${startDate}T10:00:00-${tzOffsetStart}&timeMax=${endDate}T23:59:59-${tzOffsetEnd}&singleEvents=true&orderBy=startTime`;
+
+  const resp = await axios.get(url);
+
+  const events = resp.data.items;
+
+  eventsIndex = {};
+
+  resp.data.items.forEach(item => {
+    const date = item.start.dateTime.substr(5, 5);
+    eventsIndex[date] = eventsIndex[date] || [];
+    eventsIndex[date].push(item);
+  });
+
+  console.log(eventsIndex);
+
+  let dates = '';
+
+  while(currDate <= calEnd) {
+      dates += `<li class="${currDate.getMonth() != month ? 'month-prev-next' : ''}">${currDate.getDate()}</li>`;
+      currDate.setDate(currDate.getDate() + 1);
+  }
+
+  res.send(template.replace('{{dates}}', dates));
+});
+
+app.listen(3000, () => {
+    console.log('app listening on port 3000');
+})
 
 const wss = new WebSocketServer.Server({ port: 8080 })
 
