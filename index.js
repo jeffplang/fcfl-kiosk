@@ -7,6 +7,7 @@ const app = express();
 
 const template = readFileSync('./index.html').toString();
 
+app.use(express.static('assets'));
 app.get('/', async (req, res) => {
   const today = new Date();
   const month = today.getMonth();
@@ -42,13 +43,22 @@ app.get('/', async (req, res) => {
     eventsIndex[date].push(item);
   });
 
-  console.log(eventsIndex);
-
   let dates = '';
 
   while(currDate <= calEnd) {
-      dates += `<li class="${currDate.getMonth() != month ? 'month-prev-next' : ''}">${currDate.getDate()}</li>`;
-      currDate.setDate(currDate.getDate() + 1);
+    const lookupIdx = `${String(currDate.getMonth() + 1).padStart(2, '0')}-${String(currDate.getDate()).padStart(2, '0')}`
+    dates += `<li class="${currDate.getMonth() != month ? 'month-prev-next' : ''}">`;
+    dates += `<abbr>${currDate.getDate()}</abbr>`;
+    if(eventsIndex[lookupIdx]) {
+      dates += '<ul class=events>';
+      for(event of eventsIndex[lookupIdx]) {
+        const start = new Date(event.start.dateTime);
+        dates += `<li>${start.toLocaleTimeString('en-US', { timeStyle: 'short' })} ${event.summary}</li>`;
+      }
+      dates += '</ul>';
+    }
+    dates += `</li>`;
+    currDate.setDate(currDate.getDate() + 1);
   }
 
   res.send(template.replace('{{dates}}', dates));
